@@ -12,6 +12,9 @@ WORKDIR /code
 # Install dependencies
 COPY requirements.txt /tmp/requirements.txt
 
+
+RUN apt update && apt install -y build-essential libssl-dev libffi-dev
+
 RUN set -ex && \
     pip install --upgrade pip && \
     pip install -r /tmp/requirements.txt && \
