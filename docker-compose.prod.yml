@@ -1,0 +1,27 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    command: gunicorn django_project.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - .:/usr/src/app
+    ports:
+      - 8000:8000
+    depends_on:
+      - db
+    env_file:
+      - .env.prod
+  db:
+    image: postgres:16
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data/
+    environment:
+      - "POSTGRES_USER=postgres"
+      - "POSTGRES_PASSWORD=postgres"
+      - "POSTGRES_DB=guscorp_prod"
+    ports:
+      - 5432:5432
+
+volumes:
+  postgres_data_prod:
