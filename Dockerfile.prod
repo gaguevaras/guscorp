@@ -21,16 +21,8 @@ RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/app/wheels -r requir
 FROM python:3.12.2-slim-bookworm
 
 # create directory for the app user
-RUN mkdir -p /home/app
-
-# create the app user
-RUN addgroup --system app && adduser --system --group app
-
-# create the appropriate directories
-ENV HOME=/home/app
-ENV APP_HOME=/home/app/web
-RUN mkdir $APP_HOME
-WORKDIR $APP_HOME
+RUN mkdir -p /code
+WORKDIR /code
 
 # install dependencies
 COPY --from=builder /usr/src/app/wheels /wheels
@@ -39,20 +31,10 @@ RUN pip install --upgrade pip
 RUN pip install --no-cache /wheels/*
 
 # copy project
-COPY . $APP_HOME
-
-# chown all the files to the app user
-RUN chown -R app:app $APP_HOME
-
-# change to the app user
-USER app
-
-
-# Copy local project
 COPY . /code/
 
 # Expose port 8000
 EXPOSE 8000
 
 # Use gunicorn on port 8000
-CMD ["gunicorn", "--bind", ":8000", "--workers", "2", "django_project.wsgi"]
+CMD ["gunicorn", "--bind", ":8000", "--workers", "2", "django_project.wsgi"]s
