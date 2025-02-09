@@ -1,8 +1,9 @@
 # Pull base image
-FROM python:3.12.2-slim-bookworm as builder
+FROM python:3.12.2-slim-bookworm AS builder
 
 # set work directory
-WORKDIR /usr/src/app
+
+WORKDIR /code
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -12,7 +13,7 @@ RUN apt update && apt install -y build-essential libssl-dev libffi-dev
 
 # Install dependencies
 COPY requirements.txt requirements.txt
-RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/app/wheels -r requirements.txt
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /code/wheels -r requirements.txt
 
 
 #########
@@ -25,16 +26,10 @@ RUN mkdir -p /code
 WORKDIR /code
 
 # install dependencies
-COPY --from=builder /usr/src/app/wheels /wheels
-COPY --from=builder /usr/src/app/requirements.txt .
+COPY --from=builder /code/wheels /wheels
+COPY --from=builder /code/requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install --no-cache /wheels/*
 
 # copy project
 COPY . /code/
-
-# Expose port 8000
-EXPOSE 8000
-
-# Use gunicorn on port 8000
-CMD ["gunicorn", "--bind", ":8000", "--workers", "2", "django_project.wsgi"]s
