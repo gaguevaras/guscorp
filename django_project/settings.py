@@ -39,6 +39,8 @@ INSTALLED_APPS = [
     # Local
     "accounts",
     "pages",
+    "rest_framework",  # Add DRF
+    "knox",           # Add Knox
 ]
 
 # https://docs.djangoproject.com/en/dev/ref/settings/#middleware
@@ -207,3 +209,17 @@ ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_AUTHENTICATION_METHOD = "email"
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_UNIQUE_EMAIL = True
+
+# REST Framework settings
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'knox.auth.TokenAuthentication',
+    ],
+}
+
+# Knox settings
+REST_KNOX = {
+    'TOKEN_TTL': None,    # Tokens never expire
+    'AUTO_REFRESH': True,
+    'AUTH_HEADER_PREFIX': 'Bearer',
+}
