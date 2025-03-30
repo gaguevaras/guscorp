@@ -99,6 +99,46 @@ $ docker compose exec web python manage.py createsuperuser
 # Load the site at http://127.0.0.1:8000 or http://127.0.0.1:8000/admin for the admin
 ```
 
+## Authentication
+
+This project uses Knox token authentication for API access. Here's how to use it:
+
+### Getting a Token
+
+To obtain an authentication token, send a POST request to the login endpoint:
+
+```bash
+curl -X POST http://localhost:8000/api/auth/login/ \
+     -H "Content-Type: application/json" \
+     -d '{"username":"your_username", "password":"your_password"}'
+```
+
+The response will include your token:
+```json
+{
+    "expiry": "2024-03-21T15:00:00.000000Z",
+    "token": "your-auth-token"
+}
+```
+
+### Using the Token
+
+Include the token in the Authorization header for all authenticated requests:
+
+```bash
+curl http://localhost:8000/api/users/1/ \
+     -H "Authorization: Bearer your-auth-token"
+```
+
+### Logging Out
+
+To invalidate your token:
+
+```bash
+curl -X POST http://localhost:8000/api/auth/logout/ \
+     -H "Authorization: Bearer your-auth-token"
+```
+
 ## Next Steps
 
 - Add environment variables. There are multiple packages but I personally prefer [environs](https://pypi.org/project/environs/).
