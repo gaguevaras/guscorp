@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     # Local
     "accounts",
     "pages",
+    "lessons",  # New lessons app
     "rest_framework",  # Add DRF
     "knox",           # Add Knox
 ]
@@ -146,6 +147,10 @@ STATIC_URL = "/static/"
 
 # https://docs.djangoproject.com/en/dev/ref/contrib/staticfiles/#std:setting-STATICFILES_DIRS
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# Media files
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 # https://whitenoise.readthedocs.io/en/latest/django.html
 STORAGES = {

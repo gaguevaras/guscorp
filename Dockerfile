@@ -12,13 +12,16 @@ WORKDIR /code
 # Install dependencies
 COPY requirements.txt /tmp/requirements.txt
 
-
 RUN apt update && apt install -y build-essential libssl-dev libffi-dev
 
 RUN set -ex && \
     pip install --upgrade pip && \
     pip install -r /tmp/requirements.txt && \
     rm -rf /root/.cache/
+
+# Create media directories and set permissions
+RUN mkdir -p /code/media/lesson_images /code/media/lesson_audio && \
+    chmod -R 755 /code/media
 
 # Copy local project
 COPY . /code/
