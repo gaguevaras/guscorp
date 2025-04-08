@@ -41,3 +41,25 @@ class Lesson(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.get_category_display()})"
+
+class LessonAssignment(models.Model):
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='assignments')
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='assigned_lessons'
+    )
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='received_lessons'
+    )
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    due_date = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ['lesson', 'assigned_to']
+
+    def __str__(self):
+        return f"{self.lesson.name} assigned to {self.assigned_to.username}"

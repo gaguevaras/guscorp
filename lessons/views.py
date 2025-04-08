@@ -1,9 +1,10 @@
 from django.shortcuts import render
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Lesson
-from .serializers import LessonSerializer
+from .models import Lesson, LessonAssignment
+from .serializers import LessonSerializer, LessonAssignmentSerializer
+from django.db import models
 
 # Create your views here.
 
@@ -13,12 +14,52 @@ class LessonViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Only return lessons created by the current user
-        return self.queryset.filter(created_by=self.request.user)
+        # Return lessons created by the current user OR assigned to the current user
+        return Lesson.objects.filter(
+            models.Q(created_by=self.request.user) |
+            models.Q(assignments__assigned_to=self.request.user)
+        ).distinct()
 
     def perform_create(self, serializer):
-        # The created_by field is automatically set in the serializer
         serializer.save()
+
+    @action(detail=True, methods=['post'])
+    def assign(self, request, pk=None):
+        lesson = self.get_object()
+        serializer = LessonAssignmentSerializer(
+            data=request.data,
+            context={'request': request}
+        )
+        
+        if serializer.is_valid():
+            # Check if the lesson is already assigned to this user
+            if LessonAssignment.objects.filter(
+                lesson=lesson,
+                assigned_to=serializer.validated_data['assigned_to']
+            ).exists():
+                return Response(
+                    {'error': 'This lesson is already assigned to this user'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            serializer.save(lesson=lesson)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['get'])
+    def assignments(self, request, pk=None):
+        lesson = self.get_object()
+        assignments = lesson.assignments.all()
+        serializer = LessonAssignmentSerializer(assignments, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def assigned_to_me(self, request):
+        assigned_lessons = Lesson.objects.filter(
+            assignments__assigned_to=request.user
+        ).distinct()
+        serializer = self.get_serializer(assigned_lessons, many=True)
+        return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
     def upload_image(self, request, pk=None):

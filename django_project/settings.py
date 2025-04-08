@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "accounts",
     "pages",
     "lessons",  # New lessons app
+    "contacts",  # New contacts app
     "rest_framework",  # Add DRF
     "knox",           # Add Knox
 ]

@@ -12,16 +12,25 @@ class CustomUserAdmin(UserAdmin):
     model = CustomUser
     list_display = [
         "email",
-        "username",
+        "first_name",
+        "last_name",
+        "is_staff",
     ]
+    ordering = ("email",)
 
-    # Explicitly define add_fieldsets to prevent unexpected fields
+    fieldsets = (
+        (None, {"fields": ("email", "password")}),
+        ("Personal info", {"fields": ("first_name", "last_name")}),
+        ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
+        ("Important dates", {"fields": ("last_login", "date_joined")}),
+    )
+
     add_fieldsets = (
         (
             None,
             {
                 "classes": ("wide",),
-                "fields": ("username", "email", "password1", "password2"),
+                "fields": ("email", "first_name", "last_name", "password1", "password2"),
             },
         ),
     )
