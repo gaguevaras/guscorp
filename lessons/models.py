@@ -42,6 +42,45 @@ class Lesson(models.Model):
     def __str__(self):
         return f"{self.name} ({self.get_category_display()})"
 
+class PracticeSession(models.Model):
+    DIFFICULTY_CHOICES = [
+        (1, 'Very Easy'),
+        (2, 'Easy'),
+        (3, 'Moderate'),
+        (4, 'Challenging'),
+        (5, 'Very Difficult'),
+    ]
+
+    lesson = models.ForeignKey(
+        Lesson,
+        on_delete=models.CASCADE,
+        related_name='practice_sessions'
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='practice_sessions'
+    )
+    audio = models.FileField(
+        upload_to='practice_audio/',
+        validators=[FileExtensionValidator(allowed_extensions=['mp3', 'wav', 'ogg', 'm4a'])],
+        blank=True,
+        null=True
+    )
+    difficulty = models.IntegerField(
+        choices=DIFFICULTY_CHOICES,
+        help_text='Rating from 1 (Very Easy) to 5 (Very Difficult)'
+    )
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.email} - {self.lesson.name} ({self.get_difficulty_display()})"
+
 class LessonAssignment(models.Model):
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='assignments')
     assigned_by = models.ForeignKey(
