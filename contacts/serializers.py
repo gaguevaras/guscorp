@@ -14,11 +14,24 @@ class ContactSerializer(serializers.ModelSerializer):
         write_only=True,
         source='contact'
     )
+    user = UserSerializer(read_only=True)
+    other_user = serializers.SerializerMethodField()
 
     class Meta:
         model = Contact
-        fields = ['id', 'contact', 'contact_id', 'created_at']
+        fields = ['id', 'contact', 'contact_id', 'user', 'other_user', 'created_at']
         read_only_fields = ['user', 'created_at']
+
+    def get_other_user(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            # If the requesting user is the contact, show the user
+            if request.user == obj.contact:
+                return UserSerializer(obj.user).data
+            # If the requesting user is the user, show the contact
+            elif request.user == obj.user:
+                return UserSerializer(obj.contact).data
+        return None
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user

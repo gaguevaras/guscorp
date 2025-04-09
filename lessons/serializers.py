@@ -5,7 +5,7 @@ class LessonAssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = LessonAssignment
         fields = ['id', 'lesson', 'assigned_by', 'assigned_to', 'assigned_at', 'due_date', 'notes']
-        read_only_fields = ['assigned_by', 'assigned_at']
+        read_only_fields = ['assigned_by', 'assigned_at', 'lesson']
 
     def create(self, validated_data):
         validated_data['assigned_by'] = self.context['request'].user

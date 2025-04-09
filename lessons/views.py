@@ -42,7 +42,9 @@ class LessonViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            serializer.save(lesson=lesson)
+            # Add the lesson to the validated data
+            serializer.validated_data['lesson'] = lesson
+            serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
