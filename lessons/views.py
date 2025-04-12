@@ -3,6 +3,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Lesson, LessonAssignment, PracticeSession
+from contacts.models import Contact
 from .serializers import (
     LessonSerializer, 
     LessonAssignmentSerializer,
@@ -34,6 +35,35 @@ class PracticeSessionViewSet(viewsets.ModelViewSet):
     def by_lesson(self, request, lesson_id=None):
         practice_sessions = PracticeSession.objects.filter(
             user=request.user,
+            lesson_id=lesson_id
+        )
+        serializer = self.get_serializer(practice_sessions, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def by_user(self, request, lesson_id=None):
+        user_id = request.query_params.get('user_id')
+        if not user_id:
+            return Response(
+                {'error': 'user_id parameter is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if the current user has assigned this lesson to the requested user
+        has_assigned = LessonAssignment.objects.filter(
+            lesson_id=lesson_id,
+            assigned_by=request.user,
+            assigned_to_id=user_id
+        ).exists()
+        
+        if not has_assigned:
+            return Response(
+                {'error': 'You can only view practice sessions of users you have assigned this lesson to'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        practice_sessions = PracticeSession.objects.filter(
+            user_id=user_id,
             lesson_id=lesson_id
         )
         serializer = self.get_serializer(practice_sessions, many=True)
@@ -99,6 +129,14 @@ class LessonViewSet(viewsets.ModelViewSet):
     def assigned_to_me(self, request):
         assigned_lessons = Lesson.objects.filter(
             assignments__assigned_to=request.user
+        ).distinct()
+        serializer = self.get_serializer(assigned_lessons, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def assigned_by_me(self, request):
+        assigned_lessons = Lesson.objects.filter(
+            assignments__assigned_by=request.user
         ).distinct()
         serializer = self.get_serializer(assigned_lessons, many=True)
         return Response(serializer.data)

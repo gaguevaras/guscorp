@@ -20,4 +20,7 @@ urlpatterns = [
     path('<int:lesson_id>/practice/<int:pk>/upload_audio/', PracticeSessionViewSet.as_view({
         'post': 'upload_audio'
     }), name='lesson-practice-upload-audio'),
+    path('<int:lesson_id>/practice/by_user/', PracticeSessionViewSet.as_view({
+        'get': 'by_user'
+    }), name='lesson-practice-by-user'),
 ] 
