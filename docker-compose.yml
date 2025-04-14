@@ -8,6 +8,7 @@ services:
       - 8000:8000
     depends_on:
       - db
+      - redis
     env_file:
       - .env.dev
   db:
@@ -21,6 +22,23 @@ services:
       - "POSTGRES_DB=guscorp"
     ports:
       - 5432:5432
+  redis:
+    image: redis:7
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data:/data
+  celery_worker:
+    build: .
+    command: celery -A django_project worker -l INFO
+    volumes:
+      - .:/code
+    depends_on:
+      - redis
+      - web
+    env_file:
+      - .env.dev
 
 volumes:
   postgres_data:
+  redis_data:

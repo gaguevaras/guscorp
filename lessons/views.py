@@ -10,6 +10,7 @@ from .serializers import (
     PracticeSessionSerializer
 )
 from django.db import models
+from .tasks import process_practice_session_file
 
 # Create your views here.
 
@@ -75,7 +76,18 @@ class PracticeSessionViewSet(viewsets.ModelViewSet):
         if 'audio' in request.FILES:
             practice_session.audio = request.FILES['audio']
             practice_session.save()
-            return Response({'status': 'audio uploaded'})
+            
+            # Get the relative paths of both files
+            practice_audio_path = practice_session.audio.name
+            lesson_audio_path = practice_session.lesson.audio.name if practice_session.lesson.audio else None
+            
+            # Call the Celery task to process both files
+            process_practice_session_file.delay(practice_audio_path, lesson_audio_path)
+            
+            return Response({
+                'status': 'audio uploaded',
+                'message': 'File is being processed'
+            })
         return Response({'status': 'no audio provided'}, status=400)
 
 class LessonViewSet(viewsets.ModelViewSet):

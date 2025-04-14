@@ -51,6 +51,13 @@ class PracticeSession(models.Model):
         (5, 'Very Difficult'),
     ]
 
+    PROCESSING_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    ]
+
     lesson = models.ForeignKey(
         Lesson,
         on_delete=models.CASCADE,
@@ -72,6 +79,16 @@ class PracticeSession(models.Model):
         help_text='Rating from 1 (Very Easy) to 5 (Very Difficult)'
     )
     notes = models.TextField(blank=True)
+    processing_status = models.CharField(
+        max_length=20,
+        choices=PROCESSING_STATUS_CHOICES,
+        default='pending'
+    )
+    processing_results = models.JSONField(
+        blank=True,
+        null=True,
+        help_text='Stores results from audio processing (duration, format, etc.)'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

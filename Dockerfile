@@ -12,7 +12,16 @@ WORKDIR /code
 # Install dependencies
 COPY requirements.txt /tmp/requirements.txt
 
-RUN apt update && apt install -y build-essential libssl-dev libffi-dev
+# Install system dependencies
+RUN apt update && apt install -y \
+    build-essential \
+    libssl-dev \
+    libffi-dev \
+    ffmpeg \
+    libsndfile1 \
+    portaudio19-dev \
+    python3-pyaudio \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN set -ex && \
     pip install --upgrade pip && \

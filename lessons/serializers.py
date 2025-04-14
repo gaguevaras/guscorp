@@ -11,9 +11,9 @@ class PracticeSessionSerializer(serializers.ModelSerializer):
         model = PracticeSession
         fields = [
             'id', 'lesson', 'lesson_name', 'user', 'audio', 'difficulty',
-            'notes', 'created_at', 'updated_at'
+            'notes', 'created_at', 'updated_at', 'processing_status', 'processing_results'
         ]
-        read_only_fields = ['user', 'created_at', 'updated_at', 'lesson']
+        read_only_fields = ['user', 'created_at', 'updated_at', 'lesson', 'processing_status', 'processing_results']
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
