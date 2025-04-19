@@ -11,6 +11,7 @@ from .serializers import (
 )
 from django.db import models
 from .tasks import process_practice_session_file
+from django.http import Http404
 
 # Create your views here.
 
@@ -20,10 +21,26 @@ class PracticeSessionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         lesson_id = self.kwargs.get('lesson_id')
-        return PracticeSession.objects.filter(
-            user=self.request.user,
-            lesson_id=lesson_id
-        )
+        # Return all practice sessions for the lesson
+        return PracticeSession.objects.filter(lesson_id=lesson_id)
+
+    def get_object(self):
+        # Get the practice session
+        practice_session = super().get_object()
+        
+        # Check if the current user is either:
+        # 1. The author of the practice session, or
+        # 2. The assigner of the lesson to the practice session's user
+        if (practice_session.user == self.request.user or
+            LessonAssignment.objects.filter(
+                lesson=practice_session.lesson,
+                assigned_by=self.request.user,
+                assigned_to=practice_session.user
+            ).exists()):
+            return practice_session
+            
+        # If neither condition is met, raise 404
+        raise Http404("Practice session not found")
 
     def perform_create(self, serializer):
         lesson_id = self.kwargs.get('lesson_id')
@@ -34,6 +51,7 @@ class PracticeSessionViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def by_lesson(self, request, lesson_id=None):
+        # Only return practice sessions for the current user
         practice_sessions = PracticeSession.objects.filter(
             user=request.user,
             lesson_id=lesson_id
