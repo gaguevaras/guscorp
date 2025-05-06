@@ -1,17 +1,19 @@
 from django.shortcuts import render
-from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
+from rest_framework import viewsets, permissions, status, views
+from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
-from .models import Lesson, LessonAssignment, PracticeSession
+from .models import Lesson, LessonAssignment, PracticeSession, LessonAssignmentRequest
 from contacts.models import Contact
 from .serializers import (
     LessonSerializer, 
     LessonAssignmentSerializer,
-    PracticeSessionSerializer
+    PracticeSessionSerializer,
+    LessonAssignmentRequestSerializer
 )
 from django.db import models
 from .tasks import process_practice_session_file
 from django.http import Http404
+from accounts.models import CustomUser
 
 # Create your views here.
 
@@ -188,3 +190,191 @@ class LessonViewSet(viewsets.ModelViewSet):
             lesson.save()
             return Response({'status': 'audio uploaded'})
         return Response({'status': 'no audio provided'}, status=400)
+
+class LessonAssignmentRequestViewSet(viewsets.ModelViewSet):
+    serializer_class = LessonAssignmentRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']
+
+    def get_queryset(self):
+        # Return requests sent by or received by the current user
+        return LessonAssignmentRequest.objects.filter(
+            models.Q(requested_by=self.request.user) |
+            models.Q(requested_to=self.request.user)
+        ).distinct()
+
+    def perform_create(self, serializer):
+        serializer.save(requested_by=self.request.user)
+
+    @action(detail=True, methods=['post'])
+    def accept(self, request, pk=None):
+        assignment_request = self.get_object()
+        if assignment_request.requested_to != request.user:
+            return Response(
+                {'error': 'Only the recipient can accept a request'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        assignment_request.accept()
+        return Response({'status': 'request accepted'})
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        assignment_request = self.get_object()
+        if assignment_request.requested_to != request.user:
+            return Response(
+                {'error': 'Only the recipient can reject a request'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        assignment_request.reject()
+        return Response({'status': 'request rejected'})
+
+    @action(detail=False, methods=['get'])
+    def sent(self, request):
+        sent_requests = LessonAssignmentRequest.objects.filter(
+            requested_by=request.user
+        )
+        serializer = self.get_serializer(sent_requests, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def received(self, request):
+        received_requests = LessonAssignmentRequest.objects.filter(
+            requested_to=request.user,
+            status='pending'
+        )
+        serializer = self.get_serializer(received_requests, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def assigned_to_me(self, request):
+        # Get all accepted requests that were assigned to me
+        assigned_requests = LessonAssignmentRequest.objects.filter(
+            requested_to=request.user,
+            status='accepted'
+        )
+        serializer = self.get_serializer(assigned_requests, many=True)
+        return Response(serializer.data)
+
+@api_view(['POST'])
+def create_lesson_request(request):
+    """
+    Create a new lesson assignment request.
+    """
+    # Check if lesson_id is provided
+    lesson_id = request.data.get('lesson_id')
+    if not lesson_id:
+        return Response(
+            {"error": "Lesson ID is required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check if requested_to_id is provided
+    requested_to_id = request.data.get('requested_to_id')
+    if not requested_to_id:
+        return Response(
+            {"error": "User ID to assign to is required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Look up the lesson
+    try:
+        lesson = Lesson.objects.get(id=lesson_id)
+    except Lesson.DoesNotExist:
+        return Response(
+            {"error": f"Lesson with ID {lesson_id} not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Look up the user
+    try:
+        requested_to = CustomUser.objects.get(id=requested_to_id)
+    except CustomUser.DoesNotExist:
+        return Response(
+            {"error": f"User with ID {requested_to_id} not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check if this is a request to yourself
+    if requested_to.id == request.user.id:
+        return Response(
+            {"error": "You cannot assign a lesson to yourself"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check if the lesson is already assigned
+    existing_assignment = LessonAssignment.objects.filter(
+        lesson=lesson,
+        assigned_to=requested_to
+    ).exists()
+    
+    if existing_assignment:
+        return Response(
+            {"error": "This lesson is already assigned to this user"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check if there's a pending request already
+    existing_request = LessonAssignmentRequest.objects.filter(
+        lesson=lesson,
+        requested_to=requested_to,
+        status='pending'
+    ).exists()
+    
+    if existing_request:
+        return Response(
+            {"error": "A pending request already exists for this lesson and user"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Create the request
+    serializer = LessonAssignmentRequestSerializer(
+        data=request.data,
+        context={'request': request}
+    )
+    
+    if serializer.is_valid():
+        serializer.save(requested_by=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def accept_lesson_request(request, pk):
+    """
+    Accept a lesson assignment request.
+    """
+    try:
+        assignment_request = LessonAssignmentRequest.objects.get(
+            id=pk,
+            requested_to=request.user,
+            status='pending'
+        )
+    except LessonAssignmentRequest.DoesNotExist:
+        return Response(
+            {"error": "Request not found or not in pending state"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    assignment_request.accept()
+    return Response({"status": "request accepted"})
+
+@api_view(['POST'])
+def reject_lesson_request(request, pk):
+    """
+    Reject a lesson assignment request.
+    """
+    try:
+        assignment_request = LessonAssignmentRequest.objects.get(
+            id=pk,
+            requested_to=request.user,
+            status='pending'
+        )
+    except LessonAssignmentRequest.DoesNotExist:
+        return Response(
+            {"error": "Request not found or not in pending state"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    assignment_request.reject()
+    return Response({"status": "request rejected"})

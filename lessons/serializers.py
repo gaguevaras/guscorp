@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Lesson, LessonAssignment, PracticeSession
+from .models import Lesson, LessonAssignment, PracticeSession, LessonAssignmentRequest
 from accounts.serializers import UserProfileSerializer
 from accounts.models import CustomUser
 
@@ -34,6 +34,38 @@ class LessonAssignmentSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data['assigned_by'] = self.context['request'].user
+        return super().create(validated_data)
+
+class LessonAssignmentRequestSerializer(serializers.ModelSerializer):
+    requested_to = UserProfileSerializer(read_only=True)
+    requested_to_id = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(),
+        write_only=True,
+        source='requested_to'
+    )
+    requested_by = UserProfileSerializer(read_only=True)
+    lesson_details = serializers.SerializerMethodField()
+    lesson_id = serializers.PrimaryKeyRelatedField(
+        queryset=Lesson.objects.all(),
+        write_only=True,
+        source='lesson'
+    )
+
+    class Meta:
+        model = LessonAssignmentRequest
+        fields = [
+            'id', 'lesson_id', 'lesson_details', 'requested_by', 'requested_to',
+            'requested_to_id', 'status', 'due_date', 'notes', 'created_at',
+            'updated_at'
+        ]
+        read_only_fields = ['requested_by', 'created_at', 'updated_at', 'status']
+
+    def get_lesson_details(self, obj):
+        from .serializers import LessonSerializer
+        return LessonSerializer(obj.lesson, context=self.context).data
+
+    def create(self, validated_data):
+        validated_data['requested_by'] = self.context['request'].user
         return super().create(validated_data)
 
 class LessonSerializer(serializers.ModelSerializer):

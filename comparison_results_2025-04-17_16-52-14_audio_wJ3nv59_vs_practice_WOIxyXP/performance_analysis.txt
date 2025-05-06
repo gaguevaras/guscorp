@@ -1,0 +1,14 @@
+Performance Analysis:
+==================================================
+Overall Score: 62.7%
+
+Component Scores:
+Pitch Accuracy: 68.7%
+Timing Accuracy: 16.3%
+Harmonic Accuracy: 64.6%
+
+Detailed Metrics:
+Average Pitch Error: 219.7 cents
+Maximum Pitch Error: 1430.0 cents
+Timing Deviation: 1.812
+Mean Harmonic Distance: 0.155

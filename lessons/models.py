@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.core.validators import FileExtensionValidator
+from django.core.exceptions import ValidationError
 
 class Lesson(models.Model):
     CATEGORY_CHOICES = [
@@ -119,3 +120,72 @@ class LessonAssignment(models.Model):
 
     def __str__(self):
         return f"{self.lesson.name} assigned to {self.assigned_to.username}"
+
+class LessonAssignmentRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+    ]
+
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='assignment_requests')
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='sent_lesson_requests'
+    )
+    requested_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='received_lesson_requests'
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='pending'
+    )
+    due_date = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['lesson', 'requested_to']
+        ordering = ['-created_at']
+
+    def clean(self):
+        if self.requested_by == self.requested_to:
+            raise ValidationError("A user cannot request a lesson assignment to themselves.")
+        if LessonAssignment.objects.filter(lesson=self.lesson, assigned_to=self.requested_to).exists():
+            raise ValidationError("This lesson is already assigned to the user.")
+        if self.status == 'pending' and LessonAssignmentRequest.objects.filter(
+            lesson=self.lesson,
+            requested_to=self.requested_to,
+            status='pending'
+        ).exists():
+            raise ValidationError("A pending request for this lesson already exists for this user.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def accept(self):
+        if self.status == 'pending':
+            self.status = 'accepted'
+            self.save()
+            # Create the lesson assignment
+            LessonAssignment.objects.create(
+                lesson=self.lesson,
+                assigned_by=self.requested_by,
+                assigned_to=self.requested_to,
+                due_date=self.due_date,
+                notes=self.notes
+            )
+
+    def reject(self):
+        if self.status == 'pending':
+            self.status = 'rejected'
+            self.save()
+
+    def __str__(self):
+        return f"{self.lesson.name} request from {self.requested_by.email} to {self.requested_to.email} ({self.status})"
