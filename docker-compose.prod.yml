@@ -10,6 +10,7 @@ services:
       - 8000:8000
     depends_on:
       - db_prod
+      - redis_prod
     env_file:
       - .env.prod
   db_prod:
@@ -17,11 +18,31 @@ services:
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data/
     environment:
+      - "POSTGRES_HOST_AUTH_METHOD=trust"
       - "POSTGRES_USER=postgres"
       - "POSTGRES_PASSWORD=postgres"
       - "POSTGRES_DB=guscorp_prod"
     ports:
       - 5432:5432
+  redis_prod:
+    image: redis:7
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data_prod:/data
+  celery_worker_prod:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    command: celery -A django_project worker -l INFO
+    volumes:
+      - .:/code
+    depends_on:
+      - redis_prod
+      - web_prod
+    env_file:
+      - .env.prod
 
 volumes:
   postgres_data_prod:
+  redis_data_prod:
