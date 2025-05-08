@@ -99,6 +99,28 @@ $ docker compose exec web python manage.py createsuperuser
 # Load the site at http://127.0.0.1:8000 or http://127.0.0.1:8000/admin for the admin
 ```
 
+### Production Deployment
+
+For production deployment, use the production Docker configuration:
+
+```bash
+$ docker compose -f docker-compose.prod.yml up -d --build
+```
+
+To deploy updates:
+
+```bash
+$ ./deploy.sh
+```
+
+### Git Configuration
+
+When pushing to the repository, use the following command to specify the SSH key:
+
+```bash
+$ GIT_SSH_COMMAND="ssh -i ~/.ssh/id_gblabs_rsa -o IdentitiesOnly=yes" git push
+```
+
 ## Authentication
 
 This project uses Knox token authentication for API access. Here's how to use it:
