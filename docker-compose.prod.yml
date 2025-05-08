@@ -25,8 +25,6 @@ services:
       - "POSTGRES_USER=postgres"
       - "POSTGRES_PASSWORD=postgres"
       - "POSTGRES_DB=guscorp_prod"
-    ports:
-      - 5432:5432
   redis_prod:
     image: redis:7
     ports:
